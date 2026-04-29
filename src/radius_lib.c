@@ -1,5 +1,7 @@
-#include <assert.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
 #include <ngx_md5.h>
+#include <assert.h>
 #include "radius_lib.h"
 
 typedef struct {

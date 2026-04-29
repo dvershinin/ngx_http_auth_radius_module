@@ -1,7 +1,7 @@
-#include <assert.h>
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
+#include <assert.h>
 #include "logger.h"
 #include "radius_lib.h"
 
