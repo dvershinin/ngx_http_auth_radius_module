@@ -2,6 +2,19 @@ Almost totally rewritten version of https://github.com/lexelby/nginx-radius with
 configuration inspired by https://github.com/timchengx/nginx-http-radius-module.<br>
 See configuration example at https://gitflic.ru/project/ten0s/nginx-radius.
 
+Access-Request packets include the RFC 3579 Message-Authenticator attribute,
+and Message-Authenticator is verified on replies when present. This supports
+strict post-BlastRADIUS RADIUS server configurations without disabling message
+authentication for this client.
+
+## Tests
+
+```shell
+make test
+make test-asan
+make lint
+```
+
 Build:
 
 1. Get nginx source:

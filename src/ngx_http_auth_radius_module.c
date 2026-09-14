@@ -9,9 +9,10 @@
 
 struct radius_server_s;
 typedef struct radius_req_s {
-    uint8_t id;
     uint8_t buf[RADIUS_PKG_MAX];
     uint8_t auth[AUTH_BUF_SIZE];
+    size_t pkg_len;
+    uint8_t id;
     uint8_t active:1;
     uint8_t accepted:1;
     struct radius_server_s *rs;
@@ -926,6 +927,8 @@ select_radius_server(ngx_http_request_t *r,
     int rc = send_radius_request(r, ctx, req);
     if (rc == NGX_ERROR) {
         LOG_INFO(log, "internal error r: 0x%xl", r);
+        ctx->req = NULL;
+        release_radius_req(req);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
@@ -976,6 +979,7 @@ acquire_radius_req(radius_server_t* rs)
     if (req) {
         rs->req_free_list = req->next;
         req->active = 1;
+        req->pkg_len = 0;
         if (rs->req_free_list == NULL) {
             rs->req_last_list = NULL;
         }
@@ -1009,18 +1013,26 @@ send_radius_pkg(radius_req_t *req,
                 ngx_msec_t timeout,
                 ngx_log_t *log)
 {
-    size_t len = create_radius_pkg(req->buf, sizeof(req->buf),
-                                   req->id,
-                                   user, passwd,
-                                   &req->rs->secret,
-                                   &req->rs->nas_id,
-                                   req->auth);
+    if (req->pkg_len == 0) {
+        req->pkg_len = create_radius_pkg(req->buf, sizeof(req->buf),
+                                         req->id,
+                                         user, passwd,
+                                         &req->rs->secret,
+                                         &req->rs->nas_id,
+                                         req->auth);
+        if (req->pkg_len == 0) {
+            LOG_ERR(log, 0,
+                    "failed to build radius packet, r: 0x%xl, req: 0x%xl",
+                    req->http_req, req);
+            return -1;
+        }
+    }
 
-    int rc = send(req->conn->fd, req->buf, len, 0);
+    int rc = send(req->conn->fd, req->buf, req->pkg_len, 0);
     if (rc == -1) {
         LOG_ERR(log, ngx_errno,
                 "send failed, fd: %d, r: 0x%xl, len: %u",
-                req->conn->fd, req->http_req, len);
+                req->conn->fd, req->http_req, req->pkg_len);
         return -1;
     }
 
@@ -1062,19 +1074,29 @@ recv_radius_pkg(radius_req_t *req,
                                   &req->rs->secret);
         if (rc < 0) {
             switch (rc) {
-            case -1:
+            case RADIUS_PARSE_ERR_LENGTH:
                 LOG_ERR(log, 0,
                         "parse pkg error: incorrect pkg len: %d, r: 0x%xl, req: 0x%xl",
                         len, req->http_req, req);
                 break;
-            case -2:
+            case RADIUS_PARSE_ERR_ID:
                 LOG_ERR(log, 0,
                         "parse pkg error: req_id doesn't match, r: 0x%xl, req: 0x%xl",
                         req->http_req, req);
                 break;
-            case -3:
+            case RADIUS_PARSE_ERR_RESPONSE_AUTH:
                 LOG_ERR(log, 0,
                         "parse pkg error: incorrect auth, r: 0x%xl, req: 0x%xl",
+                        req->http_req, req);
+                break;
+            case RADIUS_PARSE_ERR_ATTRIBUTE:
+                LOG_ERR(log, 0,
+                        "parse pkg error: malformed attributes, r: 0x%xl, req: 0x%xl",
+                        req->http_req, req);
+                break;
+            case RADIUS_PARSE_ERR_MESSAGE_AUTH:
+                LOG_ERR(log, 0,
+                        "parse pkg error: incorrect message authenticator, r: 0x%xl, req: 0x%xl",
                         req->http_req, req);
                 break;
             default:

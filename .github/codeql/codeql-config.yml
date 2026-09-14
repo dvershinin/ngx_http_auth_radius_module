@@ -1,0 +1,4 @@
+name: auth-radius CodeQL configuration
+
+paths:
+  - src

@@ -7,6 +7,7 @@
 
 #define AUTH_BUF_SIZE 16 // MD5_DIGEST_LENGTH
 
+// Returns the packet length, or 0 when an attribute cannot be encoded.
 size_t
 create_radius_pkg(void *buf, size_t len,
                   uint8_t req_id,
@@ -18,6 +19,12 @@ create_radius_pkg(void *buf, size_t len,
 
 #define RADIUS_AUTH_ACCEPTED 0
 #define RADIUS_AUTH_REJECTED 1
+
+#define RADIUS_PARSE_ERR_LENGTH             -1
+#define RADIUS_PARSE_ERR_ID                 -2
+#define RADIUS_PARSE_ERR_RESPONSE_AUTH      -3
+#define RADIUS_PARSE_ERR_ATTRIBUTE          -4
+#define RADIUS_PARSE_ERR_MESSAGE_AUTH       -5
 
 int
 parse_radius_pkg(const void *buf, size_t len,

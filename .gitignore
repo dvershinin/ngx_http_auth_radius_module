@@ -1,0 +1,5 @@
+.build/
+distr/
+run/
+src/nginx/
+tags

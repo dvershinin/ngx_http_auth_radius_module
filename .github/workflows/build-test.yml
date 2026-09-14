@@ -1,0 +1,68 @@
+name: Build and test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+env:
+  NGINX_VERSION: release-1.28.0
+
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential cppcheck libpcre2-dev libssl-dev zlib1g-dev
+      - name: Run unit tests and cppcheck
+        run: |
+          make test
+          make lint
+      - name: Build the dynamic module against nginx
+        run: |
+          git clone --depth 1 --branch "$NGINX_VERSION" https://github.com/nginx/nginx.git /tmp/nginx
+          cd /tmp/nginx
+          ./configure --with-compat --add-dynamic-module="$GITHUB_WORKSPACE"
+          make --jobs="$(nproc)" modules
+
+  sanitizers:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential libssl-dev
+      - name: Run unit tests under ASan and UBSan
+        run: make test-asan
+
+  codeql:
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: c-cpp
+          config-file: ./.github/codeql/codeql-config.yml
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential libpcre2-dev libssl-dev zlib1g-dev
+      - name: Build nginx with the module
+        run: |
+          git clone --depth 1 --branch "$NGINX_VERSION" https://github.com/nginx/nginx.git /tmp/nginx
+          cd /tmp/nginx
+          ./configure --with-compat --add-dynamic-module="$GITHUB_WORKSPACE"
+          make --jobs="$(nproc)" modules
+      - uses: github/codeql-action/analyze@v3
