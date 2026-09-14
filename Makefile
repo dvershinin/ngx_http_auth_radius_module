@@ -18,7 +18,7 @@ CC ?= cc
 PKG_CONFIG ?= pkg-config
 
 TEST_CPPFLAGS = -Itests/include -Isrc $(shell $(PKG_CONFIG) --cflags openssl)
-TEST_CFLAGS = -std=c99 -Wall -Wextra -Werror -Wno-deprecated-declarations -g
+TEST_CFLAGS = -std=gnu99 -Wall -Wextra -Werror -Wno-deprecated-declarations -g
 TEST_LDLIBS = $(shell $(PKG_CONFIG) --libs openssl)
 TEST_SOURCES = tests/radius_lib_test.c src/radius_lib.c
 

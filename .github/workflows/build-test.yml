@@ -29,7 +29,7 @@ jobs:
         run: |
           git clone --depth 1 --branch "$NGINX_VERSION" https://github.com/nginx/nginx.git /tmp/nginx
           cd /tmp/nginx
-          ./configure --with-compat --add-dynamic-module="$GITHUB_WORKSPACE"
+          ./auto/configure --with-compat --add-dynamic-module="$GITHUB_WORKSPACE"
           make --jobs="$(nproc)" modules
 
   sanitizers:
@@ -63,6 +63,6 @@ jobs:
         run: |
           git clone --depth 1 --branch "$NGINX_VERSION" https://github.com/nginx/nginx.git /tmp/nginx
           cd /tmp/nginx
-          ./configure --with-compat --add-dynamic-module="$GITHUB_WORKSPACE"
+          ./auto/configure --with-compat --add-dynamic-module="$GITHUB_WORKSPACE"
           make --jobs="$(nproc)" modules
       - uses: github/codeql-action/analyze@v3
